@@ -121,8 +121,10 @@ always @(posedge clk) begin
             end
 
             DISP: begin
-                if(tlast | ~tvalid)
+                if(tlast)
                     state <= SYNC;
+                else if(~tvalid)
+                    state <= INIT;
                 else
                     state <= DISP;
             end
@@ -143,7 +145,7 @@ always @(posedge clk) begin
     end
 end
 
-assign tready = ~blank_r & ((state == INIT) || (state == DISP));
+assign tready = (state == INIT) | (~blank_r & (state == DISP));
 
 assign red_w = blank_r ? 7'b0 : red_r;
 assign green_w = blank_r ? 7'b0 : green_r;

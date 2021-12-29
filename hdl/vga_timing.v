@@ -4,7 +4,18 @@
 //******************************************************************************
 //* 640 x 480 @ 60 Hz VGA idõzítés generátor.                                 *
 //******************************************************************************
-module vga_timing (
+module vga_timing#(
+    parameter H_VISIBLE = 640,
+    parameter H_FRONT_PORCH = 16,
+    parameter H_SYNC_PULSE = 96,
+    parameter H_BACK_PORCH = 48,
+
+    parameter V_VISIBLE = 480,
+    parameter V_FRONT_PORCH = 10,
+    parameter V_SYNC_PULSE = 2,
+    parameter V_BACK_PORCH = 33
+)
+(
    //Órajel és reset.
    input  wire        clk,             //Pixel órajel bemenet.
    input  wire        rst,             //Reset bemenet.
@@ -23,16 +34,6 @@ module vga_timing (
 //******************************************************************************
 //* Idõzítési paraméterek.                                                     *
 //******************************************************************************
-localparam H_VISIBLE     = 640;
-localparam H_FRONT_PORCH = 16;
-localparam H_SYNC_PULSE  = 96;
-localparam H_BACK_PORCH  = 48;
-
-localparam V_VISIBLE     = 480;
-localparam V_FRONT_PORCH = 10;
-localparam V_SYNC_PULSE  = 2;
-localparam V_BACK_PORCH  = 33;
-
 localparam H_BLANK_BEGIN = H_VISIBLE     - 1;
 localparam H_SYNC_BEGIN  = H_BLANK_BEGIN + H_FRONT_PORCH;
 localparam H_SYNC_END    = H_SYNC_BEGIN  + H_SYNC_PULSE;

@@ -19,11 +19,22 @@
 *
 * */
 
-module hdmi_ctrl(
+module hdmi_ctrl#(
+    parameter H_VISIBLE = 640,
+    parameter H_FRONT_PORCH = 16,
+    parameter H_SYNC_PULSE = 96,
+    parameter H_BACK_PORCH = 48,
+
+    parameter V_VISIBLE = 480,
+    parameter V_FRONT_PORCH = 10,
+    parameter V_SYNC_PULSE = 2,
+    parameter V_BACK_PORCH = 33
+)
+(
    //Órajel és reset.
    input  wire       clk,                 //Pixel órajel bemenet.
    input  wire       clk_5x,              //5x pixel órajel bemenet.
-   input  wire       rst,                 //Reset jel.
+   input  wire       rstn,                 //Reset jel.
    
    //Kimenõ TMDS jelek.
    output wire       tmds_data0_out_p,    //Adat 0.
@@ -48,7 +59,7 @@ module hdmi_ctrl(
     /*
     * Erdemes egy kulon modult csinalni a sync- es blank jelek generalasahoz
     * A 640x480 @ 60 Hz kriteriumai:
-    *   - 25(,175) MHz pixelorajel
+    *   - 25,175 MHz pixelorajel
     *   - horizontal:
     *       - front porch: 16
     *       - sync pulse : 96
@@ -86,7 +97,7 @@ localparam SYNC = 2'b01;
 localparam DISP = 2'b10;
 
 always @(posedge clk) begin
-    if(rst) begin
+    if(~rstn) begin
         state <= INIT;
     end
     else begin
@@ -141,7 +152,7 @@ assign blue_w = blank_r ? 7'b0 : blue_r;
 tmds_transmitter TMDS_TX(
     .clk(clk),
     .clk_5x(clk_5x),
-    .rst(rst),
+    .rst(~rstn),
     .red_in(red_w),
     .green_in(green_w),
     .blue_in(blue_w),
@@ -159,9 +170,18 @@ tmds_transmitter TMDS_TX(
    .tmds_clock_out_n(tmds_clock_out_n)
 );
 
-vga_timing TIMING(
+vga_timing #(
+    .H_VISIBLE(H_VISIBLE),
+    .H_FRONT_PORCH(H_FRONT_PORCH),
+    .H_SYNC_PULSE(H_SYNC_PULSE),
+    .H_BACK_PORCH(H_BACK_PORCH),
+    .V_VISIBLE(V_VISIBLE),
+    .V_FRONT_PORCH(V_FRONT_PORCH),
+    .V_SYNC_PULSE(V_SYNC_PULSE),
+    .V_BACK_PORCH(V_BACK_PORCH)
+) TIMING(
     .clk(clk),
-    .rst(rst),
+    .rst(~rstn),
     .h_cnt(),
     .v_cnt(),
     .h_sync(hsync_w),

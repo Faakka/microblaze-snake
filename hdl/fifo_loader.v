@@ -32,7 +32,7 @@ always @(posedge clk) begin
         word_cntr <= word_cntr + 1'b1;
 end
     
-assign tdata = word_cntr;
+assign tdata = 32'h00FF00FF;
 assign tvalid = 1'b1;
 
 endmodule

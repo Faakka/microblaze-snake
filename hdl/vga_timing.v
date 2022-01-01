@@ -27,7 +27,7 @@ module vga_timing#(
    //Szinkron és kioltó jelek.
    output reg         h_sync = 1'b1,   //Horizontális szinkron pulzus.
    output reg         v_sync = 1'b0,   //Vertikális szinkron pulzus.
-   output reg         frame_end = 1'b0,
+   output wire         frame_end,
    output wire        blank            //Kioltó jel.
 );
 
@@ -116,11 +116,6 @@ begin
       v_blank <= 1'b0;
    else
        if (h_cnt == H_BLANK_END) begin
-            if (v_cnt == V_BLANK_END - 1'b1)
-                frame_end <= 1'b1;
-            else
-                frame_end <= 1'b0;
-
             if (v_cnt == V_BLANK_BEGIN)
                 v_blank <= 1'b1;
             else
@@ -129,6 +124,7 @@ begin
        end
 end
 
+assign frame_end = ((h_cnt == H_BLANK_END) & (v_cnt == V_BLANK_END));
 assign blank = h_blank | v_blank;
 
 endmodule 

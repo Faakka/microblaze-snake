@@ -47,13 +47,13 @@ module hdmi_ctrl#(
    output wire       tmds_clock_out_n,
 
     (* X_INTERFACE_INFO = "xilinx.com:interface:axis:1.0 S_AXI TDATA" *)
-    input [31:0] tdata,
+    input wire [31:0] tdata,
     (* X_INTERFACE_INFO = "xilinx.com:interface:axis:1.0 S_AXI TLAST" *)
-    input tlast,
+    input wire tlast,
     (* X_INTERFACE_INFO = "xilinx.com:interface:axis:1.0 S_AXI TVALID" *)
-    input tvalid,
+    input wire tvalid,
     (* X_INTERFACE_INFO = "xilinx.com:interface:axis:1.0 S_AXI TREADY" *)
-    output tready
+    output wire tready
 );
 
     /*
@@ -72,6 +72,7 @@ module hdmi_ctrl#(
     */
 
 
+    /*
 reg [7:0] red_r;
 reg [7:0] green_r;
 reg [7:0] blue_r;
@@ -83,12 +84,11 @@ wire [7:0] blue_w;
 reg blank_r;
 reg hsync_r;
 reg vsync_r;
-reg frame_end_r;
 
 wire blank_w;
 wire hsync_w;
 wire vsync_w;
-wire frame_end_w;
+wire frame_end;
 
 reg [1:0] state = 0;
 
@@ -110,12 +110,8 @@ always @(posedge clk) begin
             end
 
             SYNC: begin
-                if(frame_end_r) begin
-                    if(tvalid)
-                        state <= DISP;
-                    else
-                        state <= INIT;
-                end
+                if(frame_end & tvalid)
+                    state <= DISP;
                 else
                     state <= SYNC;
             end
@@ -147,9 +143,9 @@ end
 
 assign tready = (state == INIT) | (~blank_r & (state == DISP));
 
-assign red_w = blank_r ? 7'b0 : red_r;
-assign green_w = blank_r ? 7'b0 : green_r;
-assign blue_w = blank_r ? 7'b0 : blue_r;
+assign red_w = (~blank_r & (state == DISP)) ? red_r : 8'b0;
+assign green_w = (~blank_r & (state == DISP)) ? green_r : 8'b0;
+assign blue_w = (~blank_r & (state == DISP)) ? blue_r : 8'b0;
 
 tmds_transmitter TMDS_TX(
     .clk(clk),
@@ -188,16 +184,110 @@ vga_timing #(
     .v_cnt(),
     .h_sync(hsync_w),
     .v_sync(vsync_w),
-    .frame_end(frame_end_w),
+    .frame_end(frame_end),
     .blank(blank_w)
 );
 
 always @(posedge clk) begin
     hsync_r <= hsync_w;
     vsync_r <= vsync_w;
-    frame_end_r <= frame_end_w;
     blank_r <= blank_w;
 end
+    */
+
+wire [7:0] red;
+wire [7:0] green;
+wire [7:0] blue;
+
+wire blank;
+wire hsync;
+wire vsync;
+wire frame_end;
+
+reg [1:0] state = 0;
+
+localparam INIT = 2'b00;
+localparam SYNC = 2'b01;
+localparam DISP = 2'b10;
+
+always @(posedge clk) begin
+    if(~rstn) begin
+        state <= INIT;
+    end
+    else begin
+        case(state)
+            INIT: begin
+                if(tlast)
+                    state <= SYNC;
+                else
+                    state <= INIT;
+            end
+
+            SYNC: begin
+                if(frame_end & tvalid)
+                    state <= DISP;
+                else
+                    state <= SYNC;
+            end
+
+            DISP: begin
+                if(tlast)
+                    state <= SYNC;
+                else if(~tvalid)
+                    state <= INIT;
+                else
+                    state <= DISP;
+            end
+        endcase
+    end
+end
+
+assign tready = (state == INIT) | (~blank & (state == DISP));
+
+assign red = (~blank & (state == DISP)) ? tdata[7:0] : 8'b0;
+assign green = (~blank & (state == DISP)) ? tdata[15:8] : 8'b0;
+assign blue = (~blank & (state == DISP)) ? tdata[23:16] : 8'b0;
+
+tmds_transmitter TMDS_TX(
+    .clk(clk),
+    .clk_5x(clk_5x),
+    .rst(~rstn),
+    .red_in(red),
+    .green_in(green),
+    .blue_in(blue),
+    .blank_in(blank),
+    .hsync_in(hsync),
+    .vsync_in(vsync),
+
+   .tmds_data0_out_p(tmds_data0_out_p),
+   .tmds_data0_out_n(tmds_data0_out_n),
+   .tmds_data1_out_p(tmds_data1_out_p),
+   .tmds_data1_out_n(tmds_data1_out_n),
+   .tmds_data2_out_p(tmds_data2_out_p),
+   .tmds_data2_out_n(tmds_data2_out_n),
+   .tmds_clock_out_p(tmds_clock_out_p),
+   .tmds_clock_out_n(tmds_clock_out_n)
+);
+
+vga_timing #(
+    .H_VISIBLE(H_VISIBLE),
+    .H_FRONT_PORCH(H_FRONT_PORCH),
+    .H_SYNC_PULSE(H_SYNC_PULSE),
+    .H_BACK_PORCH(H_BACK_PORCH),
+    .V_VISIBLE(V_VISIBLE),
+    .V_FRONT_PORCH(V_FRONT_PORCH),
+    .V_SYNC_PULSE(V_SYNC_PULSE),
+    .V_BACK_PORCH(V_BACK_PORCH)
+) TIMING(
+    .clk(clk),
+    .rst(~rstn),
+    .h_cnt(),
+    .v_cnt(),
+    .h_sync(hsync),
+    .v_sync(vsync),
+    .frame_end(frame_end),
+    .blank(blank)
+);
 
 endmodule
 
